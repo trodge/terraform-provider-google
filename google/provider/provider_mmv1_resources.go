@@ -179,7 +179,6 @@ var handwrittenDatasources = map[string]*schema.Resource{
 	"google_compute_region_instance_template":             compute.DataSourceGoogleComputeRegionInstanceTemplate(),
 	"google_compute_region_network_endpoint_group":        compute.DataSourceGoogleComputeRegionNetworkEndpointGroup(),
 	"google_compute_region_ssl_certificate":               compute.DataSourceGoogleRegionComputeSslCertificate(),
-	"google_compute_reservation":                          compute.DataSourceGoogleComputeReservation(),
 	"google_compute_resource_policy":                      compute.DataSourceGoogleComputeResourcePolicy(),
 	"google_compute_router":                               compute.DataSourceGoogleComputeRouter(),
 	"google_compute_router_nat":                           compute.DataSourceGoogleComputeRouterNat(),
@@ -374,9 +373,9 @@ var handwrittenIAMDatasources = map[string]*schema.Resource{
 }
 
 // Resources
-// Generated resources: 359
+// Generated resources: 350
 // Generated IAM resources: 219
-// Total generated resources: 578
+// Total generated resources: 569
 var generatedResources = map[string]*schema.Resource{
 	"google_folder_access_approval_settings":                         accessapproval.ResourceAccessApprovalFolderSettings(),
 	"google_organization_access_approval_settings":                   accessapproval.ResourceAccessApprovalOrganizationSettings(),
@@ -549,7 +548,6 @@ var generatedResources = map[string]*schema.Resource{
 	"google_compute_network_endpoint":                                compute.ResourceComputeNetworkEndpoint(),
 	"google_compute_network_endpoint_group":                          compute.ResourceComputeNetworkEndpointGroup(),
 	"google_compute_network_endpoints":                               compute.ResourceComputeNetworkEndpoints(),
-	"google_compute_network_firewall_policy":                         compute.ResourceComputeNetworkFirewallPolicy(),
 	"google_compute_network_peering_routes_config":                   compute.ResourceComputeNetworkPeeringRoutesConfig(),
 	"google_compute_node_group":                                      compute.ResourceComputeNodeGroup(),
 	"google_compute_node_template":                                   compute.ResourceComputeNodeTemplate(),
@@ -567,7 +565,6 @@ var generatedResources = map[string]*schema.Resource{
 	"google_compute_region_disk_resource_policy_attachment":          compute.ResourceComputeRegionDiskResourcePolicyAttachment(),
 	"google_compute_region_health_check":                             compute.ResourceComputeRegionHealthCheck(),
 	"google_compute_region_network_endpoint_group":                   compute.ResourceComputeRegionNetworkEndpointGroup(),
-	"google_compute_region_network_firewall_policy":                  compute.ResourceComputeRegionNetworkFirewallPolicy(),
 	"google_compute_region_per_instance_config":                      compute.ResourceComputeRegionPerInstanceConfig(),
 	"google_compute_region_ssl_certificate":                          compute.ResourceComputeRegionSslCertificate(),
 	"google_compute_region_ssl_policy":                               compute.ResourceComputeRegionSslPolicy(),
@@ -787,17 +784,14 @@ var generatedResources = map[string]*schema.Resource{
 	"google_identity_platform_tenant_inbound_saml_config":            identityplatform.ResourceIdentityPlatformTenantInboundSamlConfig(),
 	"google_identity_platform_tenant_oauth_idp_config":               identityplatform.ResourceIdentityPlatformTenantOauthIdpConfig(),
 	"google_integration_connectors_connection":                       integrationconnectors.ResourceIntegrationConnectorsConnection(),
-	"google_integration_connectors_endpoint_attachment":              integrationconnectors.ResourceIntegrationConnectorsEndpointAttachment(),
 	"google_kms_crypto_key":                                          kms.ResourceKMSCryptoKey(),
 	"google_kms_crypto_key_version":                                  kms.ResourceKMSCryptoKeyVersion(),
 	"google_kms_key_ring":                                            kms.ResourceKMSKeyRing(),
 	"google_kms_key_ring_import_job":                                 kms.ResourceKMSKeyRingImportJob(),
 	"google_kms_secret_ciphertext":                                   kms.ResourceKMSSecretCiphertext(),
-	"google_logging_folder_settings":                                 logging.ResourceLoggingFolderSettings(),
 	"google_logging_linked_dataset":                                  logging.ResourceLoggingLinkedDataset(),
 	"google_logging_log_view":                                        logging.ResourceLoggingLogView(),
 	"google_logging_metric":                                          logging.ResourceLoggingMetric(),
-	"google_logging_organization_settings":                           logging.ResourceLoggingOrganizationSettings(),
 	"google_looker_instance":                                         looker.ResourceLookerInstance(),
 	"google_memcache_instance":                                       memcache.ResourceMemcacheInstance(),
 	"google_migration_center_group":                                  migrationcenter.ResourceMigrationCenterGroup(),
@@ -811,8 +805,6 @@ var generatedResources = map[string]*schema.Resource{
 	"google_monitoring_custom_service":                               monitoring.ResourceMonitoringService(),
 	"google_monitoring_slo":                                          monitoring.ResourceMonitoringSlo(),
 	"google_monitoring_uptime_check_config":                          monitoring.ResourceMonitoringUptimeCheckConfig(),
-	"google_netapp_active_directory":                                 netapp.ResourceNetappactiveDirectory(),
-	"google_netapp_backup_vault":                                     netapp.ResourceNetappbackupVault(),
 	"google_netapp_storage_pool":                                     netapp.ResourceNetappstoragePool(),
 	"google_network_connectivity_policy_based_route":                 networkconnectivity.ResourceNetworkConnectivityPolicyBasedRoute(),
 	"google_network_connectivity_service_connection_policy":          networkconnectivity.ResourceNetworkConnectivityServiceConnectionPolicy(),
@@ -917,8 +909,6 @@ var generatedResources = map[string]*schema.Resource{
 	"google_tpu_node":                                                tpu.ResourceTPUNode(),
 	"google_vertex_ai_dataset":                                       vertexai.ResourceVertexAIDataset(),
 	"google_vertex_ai_endpoint":                                      vertexai.ResourceVertexAIEndpoint(),
-	"google_vertex_ai_feature_group":                                 vertexai.ResourceVertexAIFeatureGroup(),
-	"google_vertex_ai_feature_online_store":                          vertexai.ResourceVertexAIFeatureOnlineStore(),
 	"google_vertex_ai_featurestore":                                  vertexai.ResourceVertexAIFeaturestore(),
 	"google_vertex_ai_featurestore_entitytype":                       vertexai.ResourceVertexAIFeaturestoreEntitytype(),
 	"google_vertex_ai_featurestore_entitytype_feature":               vertexai.ResourceVertexAIFeaturestoreEntitytypeFeature(),
