@@ -113,6 +113,14 @@ This field follows Kubernetes annotations' namespacing, limits, and rules.`,
 											Type: schema.TypeString,
 										},
 									},
+									"depends_on": {
+										Type:        schema.TypeList,
+										Optional:    true,
+										Description: `Containers which should be started before this container. If specified the container will wait to start until all containers with the listed names are healthy.`,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+									},
 									"env": {
 										Type:        schema.TypeList,
 										Optional:    true,
@@ -309,7 +317,7 @@ If omitted, a port number will be chosen and passed to the container through the
 													Type:        schema.TypeMap,
 													Computed:    true,
 													Optional:    true,
-													Description: `Only memory and CPU are supported. Note: The only supported values for CPU are '1', '2', '4', and '8'. Setting 4 CPU requires at least 2Gi of memory. The values of the map is string form of the 'quantity' k8s type: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go`,
+													Description: `Only memory and CPU are supported. Use key 'cpu' for CPU limit and 'memory' for memory limit. Note: The only supported values for CPU are '1', '2', '4', and '8'. Setting 4 CPU requires at least 2Gi of memory. The values of the map is string form of the 'quantity' k8s type: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go`,
 													Elem:        &schema.Schema{Type: schema.TypeString},
 												},
 												"startup_cpu_boost": {
@@ -1800,6 +1808,7 @@ func flattenCloudRunV2ServiceTemplateContainers(v interface{}, d *schema.Resourc
 			"working_dir":    flattenCloudRunV2ServiceTemplateContainersWorkingDir(original["workingDir"], d, config),
 			"liveness_probe": flattenCloudRunV2ServiceTemplateContainersLivenessProbe(original["livenessProbe"], d, config),
 			"startup_probe":  flattenCloudRunV2ServiceTemplateContainersStartupProbe(original["startupProbe"], d, config),
+			"depends_on":     flattenCloudRunV2ServiceTemplateContainersDependsOn(original["dependsOn"], d, config),
 		})
 	}
 	return transformed
@@ -2382,6 +2391,10 @@ func flattenCloudRunV2ServiceTemplateContainersStartupProbeGrpcPort(v interface{
 }
 
 func flattenCloudRunV2ServiceTemplateContainersStartupProbeGrpcService(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
+	return v
+}
+
+func flattenCloudRunV2ServiceTemplateContainersDependsOn(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
 	return v
 }
 
@@ -3214,6 +3227,13 @@ func expandCloudRunV2ServiceTemplateContainers(v interface{}, d tpgresource.Terr
 			transformed["startupProbe"] = transformedStartupProbe
 		}
 
+		transformedDependsOn, err := expandCloudRunV2ServiceTemplateContainersDependsOn(original["depends_on"], d, config)
+		if err != nil {
+			return nil, err
+		} else if val := reflect.ValueOf(transformedDependsOn); val.IsValid() && !tpgresource.IsEmptyValue(val) {
+			transformed["dependsOn"] = transformedDependsOn
+		}
+
 		req = append(req, transformed)
 	}
 	return req, nil
@@ -3878,6 +3898,10 @@ func expandCloudRunV2ServiceTemplateContainersStartupProbeGrpcPort(v interface{}
 }
 
 func expandCloudRunV2ServiceTemplateContainersStartupProbeGrpcService(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
+	return v, nil
+}
+
+func expandCloudRunV2ServiceTemplateContainersDependsOn(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
 	return v, nil
 }
 

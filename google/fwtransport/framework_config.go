@@ -124,6 +124,7 @@ type FrameworkProviderConfig struct {
 	MigrationCenterBasePath          string
 	MLEngineBasePath                 string
 	MonitoringBasePath               string
+	NetappBasePath                   string
 	NetworkConnectivityBasePath      string
 	NetworkManagementBasePath        string
 	NetworkSecurityBasePath          string
@@ -139,6 +140,7 @@ type FrameworkProviderConfig struct {
 	RedisBasePath                    string
 	ResourceManagerBasePath          string
 	SecretManagerBasePath            string
+	SecureSourceManagerBasePath      string
 	SecurityCenterBasePath           string
 	ServiceManagementBasePath        string
 	ServiceUsageBasePath             string
@@ -151,7 +153,9 @@ type FrameworkProviderConfig struct {
 	TagsBasePath                     string
 	TPUBasePath                      string
 	VertexAIBasePath                 string
+	VmwareengineBasePath             string
 	VPCAccessBasePath                string
+	WorkbenchBasePath                string
 	WorkflowsBasePath                string
 }
 
@@ -265,6 +269,7 @@ func (p *FrameworkProviderConfig) LoadAndValidateFramework(ctx context.Context, 
 	p.MigrationCenterBasePath = data.MigrationCenterCustomEndpoint.ValueString()
 	p.MLEngineBasePath = data.MLEngineCustomEndpoint.ValueString()
 	p.MonitoringBasePath = data.MonitoringCustomEndpoint.ValueString()
+	p.NetappBasePath = data.NetappCustomEndpoint.ValueString()
 	p.NetworkConnectivityBasePath = data.NetworkConnectivityCustomEndpoint.ValueString()
 	p.NetworkManagementBasePath = data.NetworkManagementCustomEndpoint.ValueString()
 	p.NetworkSecurityBasePath = data.NetworkSecurityCustomEndpoint.ValueString()
@@ -280,6 +285,7 @@ func (p *FrameworkProviderConfig) LoadAndValidateFramework(ctx context.Context, 
 	p.RedisBasePath = data.RedisCustomEndpoint.ValueString()
 	p.ResourceManagerBasePath = data.ResourceManagerCustomEndpoint.ValueString()
 	p.SecretManagerBasePath = data.SecretManagerCustomEndpoint.ValueString()
+	p.SecureSourceManagerBasePath = data.SecureSourceManagerCustomEndpoint.ValueString()
 	p.SecurityCenterBasePath = data.SecurityCenterCustomEndpoint.ValueString()
 	p.ServiceManagementBasePath = data.ServiceManagementCustomEndpoint.ValueString()
 	p.ServiceUsageBasePath = data.ServiceUsageCustomEndpoint.ValueString()
@@ -292,7 +298,9 @@ func (p *FrameworkProviderConfig) LoadAndValidateFramework(ctx context.Context, 
 	p.TagsBasePath = data.TagsCustomEndpoint.ValueString()
 	p.TPUBasePath = data.TPUCustomEndpoint.ValueString()
 	p.VertexAIBasePath = data.VertexAICustomEndpoint.ValueString()
+	p.VmwareengineBasePath = data.VmwareengineCustomEndpoint.ValueString()
 	p.VPCAccessBasePath = data.VPCAccessCustomEndpoint.ValueString()
+	p.WorkbenchBasePath = data.WorkbenchCustomEndpoint.ValueString()
 	p.WorkflowsBasePath = data.WorkflowsCustomEndpoint.ValueString()
 
 	p.Context = ctx
@@ -1005,6 +1013,14 @@ func (p *FrameworkProviderConfig) HandleDefaults(ctx context.Context, data *fwmo
 			data.MonitoringCustomEndpoint = types.StringValue(customEndpoint.(string))
 		}
 	}
+	if data.NetappCustomEndpoint.IsNull() {
+		customEndpoint := transport_tpg.MultiEnvDefault([]string{
+			"GOOGLE_NETAPP_CUSTOM_ENDPOINT",
+		}, transport_tpg.DefaultBasePaths[transport_tpg.NetappBasePathKey])
+		if customEndpoint != nil {
+			data.NetappCustomEndpoint = types.StringValue(customEndpoint.(string))
+		}
+	}
 	if data.NetworkConnectivityCustomEndpoint.IsNull() {
 		customEndpoint := transport_tpg.MultiEnvDefault([]string{
 			"GOOGLE_NETWORK_CONNECTIVITY_CUSTOM_ENDPOINT",
@@ -1125,6 +1141,14 @@ func (p *FrameworkProviderConfig) HandleDefaults(ctx context.Context, data *fwmo
 			data.SecretManagerCustomEndpoint = types.StringValue(customEndpoint.(string))
 		}
 	}
+	if data.SecureSourceManagerCustomEndpoint.IsNull() {
+		customEndpoint := transport_tpg.MultiEnvDefault([]string{
+			"GOOGLE_SECURE_SOURCE_MANAGER_CUSTOM_ENDPOINT",
+		}, transport_tpg.DefaultBasePaths[transport_tpg.SecureSourceManagerBasePathKey])
+		if customEndpoint != nil {
+			data.SecureSourceManagerCustomEndpoint = types.StringValue(customEndpoint.(string))
+		}
+	}
 	if data.SecurityCenterCustomEndpoint.IsNull() {
 		customEndpoint := transport_tpg.MultiEnvDefault([]string{
 			"GOOGLE_SECURITY_CENTER_CUSTOM_ENDPOINT",
@@ -1221,12 +1245,28 @@ func (p *FrameworkProviderConfig) HandleDefaults(ctx context.Context, data *fwmo
 			data.VertexAICustomEndpoint = types.StringValue(customEndpoint.(string))
 		}
 	}
+	if data.VmwareengineCustomEndpoint.IsNull() {
+		customEndpoint := transport_tpg.MultiEnvDefault([]string{
+			"GOOGLE_VMWAREENGINE_CUSTOM_ENDPOINT",
+		}, transport_tpg.DefaultBasePaths[transport_tpg.VmwareengineBasePathKey])
+		if customEndpoint != nil {
+			data.VmwareengineCustomEndpoint = types.StringValue(customEndpoint.(string))
+		}
+	}
 	if data.VPCAccessCustomEndpoint.IsNull() {
 		customEndpoint := transport_tpg.MultiEnvDefault([]string{
 			"GOOGLE_VPC_ACCESS_CUSTOM_ENDPOINT",
 		}, transport_tpg.DefaultBasePaths[transport_tpg.VPCAccessBasePathKey])
 		if customEndpoint != nil {
 			data.VPCAccessCustomEndpoint = types.StringValue(customEndpoint.(string))
+		}
+	}
+	if data.WorkbenchCustomEndpoint.IsNull() {
+		customEndpoint := transport_tpg.MultiEnvDefault([]string{
+			"GOOGLE_WORKBENCH_CUSTOM_ENDPOINT",
+		}, transport_tpg.DefaultBasePaths[transport_tpg.WorkbenchBasePathKey])
+		if customEndpoint != nil {
+			data.WorkbenchCustomEndpoint = types.StringValue(customEndpoint.(string))
 		}
 	}
 	if data.WorkflowsCustomEndpoint.IsNull() {

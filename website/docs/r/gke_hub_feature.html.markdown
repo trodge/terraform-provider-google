@@ -143,7 +143,7 @@ resource "google_gke_hub_feature" "feature" {
 resource "google_gke_hub_feature" "feature" {
   name = "servicemesh"
   location = "global"
-  fleetDefaultMemberConfig {
+  fleet_default_member_config {
     mesh {
       management = "MANAGEMENT_AUTOMATIC"
     }
@@ -157,7 +157,7 @@ resource "google_gke_hub_feature" "feature" {
 resource "google_gke_hub_feature" "feature" {
   name = "configmanagement"
   location = "global"
-  fleetDefaultMemberConfig {
+  fleet_default_member_config {
     configmanagement {
       config_sync {
         git {
@@ -402,6 +402,10 @@ The following arguments are supported:
 
 <a name="nested_configmanagement"></a>The `configmanagement` block supports:
 
+* `version` -
+  (Optional)
+  Version of ACM installed
+
 * `config_sync` -
   (Optional)
   ConfigSync configuration for the cluster
@@ -482,8 +486,10 @@ The following arguments are supported:
   Period in seconds between consecutive syncs. Default: 15
 
 * `version` -
-  (Optional)
+  (Optional, Deprecated)
   Version of ACM installed
+
+  ~> **Warning:** The `configmanagement.config_sync.oci.version` field is deprecated and will be removed in a future major release. Please use `configmanagement.version` field to specify the version of ACM installed instead.
 
 <a name="nested_policycontroller"></a>The `policycontroller` block supports:
 

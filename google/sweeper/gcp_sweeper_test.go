@@ -80,6 +80,7 @@ import (
 	_ "github.com/hashicorp/terraform-provider-google/google/services/migrationcenter"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/mlengine"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/monitoring"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/netapp"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/networkconnectivity"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/networkmanagement"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/networksecurity"
@@ -95,6 +96,7 @@ import (
 	_ "github.com/hashicorp/terraform-provider-google/google/services/redis"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/secretmanager"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/securesourcemanager"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/securitycenter"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/servicemanagement"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/serviceusage"
@@ -107,7 +109,9 @@ import (
 	_ "github.com/hashicorp/terraform-provider-google/google/services/tags"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/tpu"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/vertexai"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/vmwareengine"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/vpcaccess"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/workbench"
 	_ "github.com/hashicorp/terraform-provider-google/google/services/workflows"
 
 	// Manually add the services for DCL resource and handwritten resource sweepers if they are not in the above list

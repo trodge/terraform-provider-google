@@ -99,6 +99,7 @@ type ProviderModel struct {
 	MigrationCenterCustomEndpoint          types.String `tfsdk:"migration_center_custom_endpoint"`
 	MLEngineCustomEndpoint                 types.String `tfsdk:"ml_engine_custom_endpoint"`
 	MonitoringCustomEndpoint               types.String `tfsdk:"monitoring_custom_endpoint"`
+	NetappCustomEndpoint                   types.String `tfsdk:"netapp_custom_endpoint"`
 	NetworkConnectivityCustomEndpoint      types.String `tfsdk:"network_connectivity_custom_endpoint"`
 	NetworkManagementCustomEndpoint        types.String `tfsdk:"network_management_custom_endpoint"`
 	NetworkSecurityCustomEndpoint          types.String `tfsdk:"network_security_custom_endpoint"`
@@ -114,6 +115,7 @@ type ProviderModel struct {
 	RedisCustomEndpoint                    types.String `tfsdk:"redis_custom_endpoint"`
 	ResourceManagerCustomEndpoint          types.String `tfsdk:"resource_manager_custom_endpoint"`
 	SecretManagerCustomEndpoint            types.String `tfsdk:"secret_manager_custom_endpoint"`
+	SecureSourceManagerCustomEndpoint      types.String `tfsdk:"secure_source_manager_custom_endpoint"`
 	SecurityCenterCustomEndpoint           types.String `tfsdk:"security_center_custom_endpoint"`
 	ServiceManagementCustomEndpoint        types.String `tfsdk:"service_management_custom_endpoint"`
 	ServiceUsageCustomEndpoint             types.String `tfsdk:"service_usage_custom_endpoint"`
@@ -126,7 +128,9 @@ type ProviderModel struct {
 	TagsCustomEndpoint                     types.String `tfsdk:"tags_custom_endpoint"`
 	TPUCustomEndpoint                      types.String `tfsdk:"tpu_custom_endpoint"`
 	VertexAICustomEndpoint                 types.String `tfsdk:"vertex_ai_custom_endpoint"`
+	VmwareengineCustomEndpoint             types.String `tfsdk:"vmwareengine_custom_endpoint"`
 	VPCAccessCustomEndpoint                types.String `tfsdk:"vpc_access_custom_endpoint"`
+	WorkbenchCustomEndpoint                types.String `tfsdk:"workbench_custom_endpoint"`
 	WorkflowsCustomEndpoint                types.String `tfsdk:"workflows_custom_endpoint"`
 
 	// Handwritten Products / Versioned / Atypical Entries
