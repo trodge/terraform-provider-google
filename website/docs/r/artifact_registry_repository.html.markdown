@@ -101,10 +101,17 @@ data "google_project" "project" {}
 
 
 ```hcl
-resource "google_artifact_registry_repository" "my-repo-upstream" {
+resource "google_artifact_registry_repository" "my-repo-upstream-1" {
   location      = "us-central1"
-  repository_id = "my-repository-upstream"
-  description   = "example docker repository (upstream source)"
+  repository_id = "my-repository-upstream-1"
+  description   = "example docker repository (upstream source) 1"
+  format        = "DOCKER"
+}
+
+resource "google_artifact_registry_repository" "my-repo-upstream-2" {
+  location      = "us-central1"
+  repository_id = "my-repository-upstream-2"
+  description   = "example docker repository (upstream source) 2"
   format        = "DOCKER"
 }
 
@@ -117,9 +124,14 @@ resource "google_artifact_registry_repository" "my-repo" {
   mode          = "VIRTUAL_REPOSITORY"
   virtual_repository_config {
     upstream_policies {
-      id          = "my-repository-upstream"
-      repository  = google_artifact_registry_repository.my-repo-upstream.id
-      priority    = 1
+      id          = "my-repository-upstream-1"
+      repository  = google_artifact_registry_repository.my-repo-upstream-1.id
+      priority    = 20
+    }
+    upstream_policies {
+      id          = "my-repository-upstream-2"
+      repository  = google_artifact_registry_repository.my-repo-upstream-2.id
+      priority    = 10
     }
   }
 }
@@ -239,6 +251,55 @@ resource "google_artifact_registry_repository" "my-repo" {
     most_recent_versions {
       package_name_prefixes = ["webapp", "mobile", "sandbox"]
       keep_count            = 5
+    }
+  }
+}
+```
+<div class = "oics-button" style="float: right; margin: 0 0 -15px">
+  <a href="https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Fterraform-google-modules%2Fdocs-examples.git&cloudshell_working_dir=artifact_registry_repository_remote_custom&cloudshell_image=gcr.io%2Fcloudshell-images%2Fcloudshell%3Alatest&open_in_editor=main.tf&cloudshell_print=.%2Fmotd&cloudshell_tutorial=.%2Ftutorial.md" target="_blank">
+    <img alt="Open in Cloud Shell" src="//gstatic.com/cloudssh/images/open-btn.svg" style="max-height: 44px; margin: 32px auto; max-width: 100%;">
+  </a>
+</div>
+## Example Usage - Artifact Registry Repository Remote Custom
+
+
+```hcl
+data "google_project" "project" {}
+
+resource "google_secret_manager_secret" "example-custom-remote-secret" {
+  secret_id = "example-secret"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "example-custom-remote-secret_version" {
+  secret = google_secret_manager_secret.example-custom-remote-secret.id
+  secret_data = "remote-password"
+}
+
+resource "google_secret_manager_secret_iam_member" "secret-access" {
+  secret_id = google_secret_manager_secret.example-custom-remote-secret.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
+}
+
+resource "google_artifact_registry_repository" "my-repo" {
+  location      = "us-central1"
+  repository_id = "example-custom-remote"
+  description   = "example remote docker repository with credentials"
+  format        = "DOCKER"
+  mode          = "REMOTE_REPOSITORY"
+  remote_repository_config {
+    description = "docker hub with custom credentials"
+    docker_repository {
+      public_repository = "DOCKER_HUB"
+    }
+    upstream_credentials {
+      username_password_credentials {
+        username = "remote-username"
+        password_secret_version = google_secret_manager_secret_version.example-custom-remote-secret_version.name
+      }
     }
   }
 }
@@ -474,6 +535,11 @@ The following arguments are supported:
   Specific settings for an Yum remote repository.
   Structure is [documented below](#nested_yum_repository).
 
+* `upstream_credentials` -
+  (Optional)
+  The credentials used to access the remote repository.
+  Structure is [documented below](#nested_upstream_credentials).
+
 
 <a name="nested_apt_repository"></a>The `apt_repository` block supports:
 
@@ -544,6 +610,26 @@ The following arguments are supported:
 * `repository_path` -
   (Required)
   Specific repository from the base, e.g. `"centos/8-stream/BaseOS/x86_64/os"`
+
+<a name="nested_upstream_credentials"></a>The `upstream_credentials` block supports:
+
+* `username_password_credentials` -
+  (Optional)
+  Use username and password to access the remote repository.
+  Structure is [documented below](#nested_username_password_credentials).
+
+
+<a name="nested_username_password_credentials"></a>The `username_password_credentials` block supports:
+
+* `username` -
+  (Optional)
+  The username to access the remote repository.
+
+* `password_secret_version` -
+  (Optional)
+  The Secret Manager key version that holds the password to access the
+  remote repository. Must be in the format of
+  `projects/{project}/secrets/{secret}/versions/{version}`.
 
 ## Attributes Reference
 

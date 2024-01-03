@@ -182,10 +182,17 @@ func TestAccArtifactRegistryRepository_artifactRegistryRepositoryVirtualExample(
 
 func testAccArtifactRegistryRepository_artifactRegistryRepositoryVirtualExample(context map[string]interface{}) string {
 	return acctest.Nprintf(`
-resource "google_artifact_registry_repository" "my-repo-upstream" {
+resource "google_artifact_registry_repository" "my-repo-upstream-1" {
   location      = "us-central1"
-  repository_id = "tf-test-my-repository-upstream%{random_suffix}"
-  description   = "example docker repository (upstream source)%{random_suffix}"
+  repository_id = "tf-test-my-repository-upstream%{random_suffix}-1"
+  description   = "example docker repository (upstream source)%{random_suffix} 1"
+  format        = "DOCKER"
+}
+
+resource "google_artifact_registry_repository" "my-repo-upstream-2" {
+  location      = "us-central1"
+  repository_id = "tf-test-my-repository-upstream%{random_suffix}-2"
+  description   = "example docker repository (upstream source)%{random_suffix} 2"
   format        = "DOCKER"
 }
 
@@ -198,9 +205,14 @@ resource "google_artifact_registry_repository" "my-repo" {
   mode          = "VIRTUAL_REPOSITORY"
   virtual_repository_config {
     upstream_policies {
-      id          = "tf-test-my-repository-upstream%{random_suffix}"
-      repository  = google_artifact_registry_repository.my-repo-upstream.id
-      priority    = 1
+      id          = "tf-test-my-repository-upstream%{random_suffix}-1"
+      repository  = google_artifact_registry_repository.my-repo-upstream-1.id
+      priority    = 20
+    }
+    upstream_policies {
+      id          = "tf-test-my-repository-upstream%{random_suffix}-2"
+      repository  = google_artifact_registry_repository.my-repo-upstream-2.id
+      priority    = 10
     }
   }
 }
@@ -335,6 +347,75 @@ resource "google_artifact_registry_repository" "my-repo" {
       public_repository {
         repository_base = "CENTOS"
         repository_path = "centos/8-stream/BaseOS/x86_64/os"
+      }
+    }
+  }
+}
+`, context)
+}
+
+func TestAccArtifactRegistryRepository_artifactRegistryRepositoryRemoteCustomExample(t *testing.T) {
+	t.Parallel()
+
+	context := map[string]interface{}{
+		"random_suffix": acctest.RandString(t, 10),
+	}
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckArtifactRegistryRepositoryDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccArtifactRegistryRepository_artifactRegistryRepositoryRemoteCustomExample(context),
+			},
+			{
+				ResourceName:            "google_artifact_registry_repository.my-repo",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"repository_id", "location", "labels", "terraform_labels"},
+			},
+		},
+	})
+}
+
+func testAccArtifactRegistryRepository_artifactRegistryRepositoryRemoteCustomExample(context map[string]interface{}) string {
+	return acctest.Nprintf(`
+data "google_project" "project" {}
+
+resource "google_secret_manager_secret" "tf-test-example-custom-remote-secret%{random_suffix}" {
+  secret_id = "tf-test-example-secret%{random_suffix}"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "tf-test-example-custom-remote-secret%{random_suffix}_version" {
+  secret = google_secret_manager_secret.tf-test-example-custom-remote-secret%{random_suffix}.id
+  secret_data = "tf-test-remote-password%{random_suffix}"
+}
+
+resource "google_secret_manager_secret_iam_member" "secret-access" {
+  secret_id = google_secret_manager_secret.tf-test-example-custom-remote-secret%{random_suffix}.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
+}
+
+resource "google_artifact_registry_repository" "my-repo" {
+  location      = "us-central1"
+  repository_id = "tf-test-example-custom-remote%{random_suffix}"
+  description   = "example remote docker repository with credentials%{random_suffix}"
+  format        = "DOCKER"
+  mode          = "REMOTE_REPOSITORY"
+  remote_repository_config {
+    description = "docker hub with custom credentials"
+    docker_repository {
+      public_repository = "DOCKER_HUB"
+    }
+    upstream_credentials {
+      username_password_credentials {
+        username = "tf-test-remote-username%{random_suffix}"
+        password_secret_version = google_secret_manager_secret_version.tf-test-example-custom-remote-secret%{random_suffix}_version.name
       }
     }
   }

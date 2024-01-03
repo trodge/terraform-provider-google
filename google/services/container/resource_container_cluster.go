@@ -714,6 +714,14 @@ func ResourceContainerCluster() *schema.Resource {
 								},
 							},
 						},
+						"autoscaling_profile": {
+							Type:             schema.TypeString,
+							Default:          "BALANCED",
+							Optional:         true,
+							DiffSuppressFunc: suppressDiffForAutopilot,
+							ValidateFunc:     validation.StringInSlice([]string{"BALANCED", "OPTIMIZE_UTILIZATION"}, false),
+							Description:      `Configuration options for the Autoscaling profile feature, which lets you choose whether the cluster autoscaler should optimize for resource utilization or resource availability when deciding to remove nodes from a cluster. Can be BALANCED or OPTIMIZE_UTILIZATION. Defaults to BALANCED.`,
+						},
 					},
 				},
 			},
@@ -1794,7 +1802,6 @@ func ResourceContainerCluster() *schema.Resource {
 				Type:             schema.TypeList,
 				Optional:         true,
 				MaxItems:         1,
-				ForceNew:         true,
 				DiffSuppressFunc: suppressDiffForAutopilot,
 				Description:      `Configuration for Cloud DNS for Kubernetes Engine.`,
 				Elem: &schema.Resource{
@@ -2154,11 +2161,28 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 		cluster.SecurityPostureConfig = expandSecurityPostureConfig(v)
 	}
 
+	needUpdateAfterCreate := false
+
 	// For now PSC based cluster don't support `enable_private_endpoint` on `create`, but only on `update` API call.
 	// If cluster is PSC based and enable_private_endpoint is set to true we will ignore it on `create` call and update cluster right after creation.
 	enablePrivateEndpointPSCCluster := isEnablePrivateEndpointPSCCluster(cluster)
 	if enablePrivateEndpointPSCCluster {
 		cluster.PrivateClusterConfig.EnablePrivateEndpoint = false
+		needUpdateAfterCreate = true
+	}
+
+	enablePDCSI := isEnablePDCSI(cluster)
+	if !enablePDCSI {
+		// GcePersistentDiskCsiDriver cannot be disabled at cluster create, only on cluster update. Ignore on create then update after creation.
+		// If pdcsi is disabled, the config should be defined. But we will be paranoid and double-check.
+		needUpdateAfterCreate = true
+		if cluster.AddonsConfig == nil {
+			cluster.AddonsConfig = &container.AddonsConfig{}
+		}
+		if cluster.AddonsConfig.GcePersistentDiskCsiDriverConfig == nil {
+			cluster.AddonsConfig.GcePersistentDiskCsiDriverConfig = &container.GcePersistentDiskCsiDriverConfig{}
+		}
+		cluster.AddonsConfig.GcePersistentDiskCsiDriverConfig.Enabled = true
 	}
 
 	req := &container.CreateClusterRequest{
@@ -2245,14 +2269,22 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 		}
 	}
 
-	if enablePrivateEndpointPSCCluster {
+	if needUpdateAfterCreate {
 		name := containerClusterFullName(project, location, clusterName)
-		req := &container.UpdateClusterRequest{
-			Update: &container.ClusterUpdate{
-				DesiredEnablePrivateEndpoint: true,
-				ForceSendFields:              []string{"DesiredEnablePrivateEndpoint"},
-			},
+		update := &container.ClusterUpdate{}
+		if enablePrivateEndpointPSCCluster {
+			update.DesiredEnablePrivateEndpoint = true
+			update.ForceSendFields = append(update.ForceSendFields, "DesiredEnablePrivateEndpoint")
 		}
+		if !enablePDCSI {
+			update.DesiredAddonsConfig = &container.AddonsConfig{
+				GcePersistentDiskCsiDriverConfig: &container.GcePersistentDiskCsiDriverConfig{
+					Enabled: false,
+				},
+			}
+			update.ForceSendFields = append(update.ForceSendFields, "DesiredAddonsConfig.GcePersistentDiskCsiDriverConfig.Enabled")
+		}
+		req := &container.UpdateClusterRequest{Update: update}
 
 		err = transport_tpg.Retry(transport_tpg.RetryOptions{
 			RetryFunc: func() error {
@@ -2265,12 +2297,12 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			},
 		})
 		if err != nil {
-			return errwrap.Wrapf("Error updating enable private endpoint: {{err}}", err)
+			return errwrap.Wrapf(fmt.Sprintf("Error updating cluster for %v: {{err}}", update.ForceSendFields), err)
 		}
 
 		err = ContainerOperationWait(config, op, project, location, "updating enable private endpoint", userAgent, d.Timeout(schema.TimeoutCreate))
 		if err != nil {
-			return errwrap.Wrapf("Error while waiting to enable private endpoint: {{err}}", err)
+			return errwrap.Wrapf(fmt.Sprintf("Error while waiting on cluster update for %v: {{err}}", update.ForceSendFields), err)
 		}
 	}
 
@@ -2700,6 +2732,22 @@ func resourceContainerClusterUpdate(d *schema.ResourceData, meta interface{}) er
 		}
 
 		log.Printf("[INFO] GKE cluster %s's cluster-wide autoscaling has been updated", d.Id())
+	}
+
+	if d.HasChange("dns_config") {
+		req := &container.UpdateClusterRequest{
+			Update: &container.ClusterUpdate{
+				DesiredDnsConfig: expandDnsConfig(d.Get("dns_config")),
+			},
+		}
+
+		updateF := updateFunc(req, "updating GKE cluster DNSConfig")
+		// Call update serially.
+		if err := transport_tpg.LockedCall(lockKey, updateF); err != nil {
+			return err
+		}
+
+		log.Printf("[INFO] GKE cluster %s's DNSConfig has been updated", d.Id())
 	}
 
 	if d.HasChange("allow_net_admin") {
@@ -4165,6 +4213,7 @@ func expandClusterAutoscaling(configured interface{}, d *schema.ResourceData) *c
 	return &container.ClusterAutoscaling{
 		EnableNodeAutoprovisioning:       config["enabled"].(bool),
 		ResourceLimits:                   resourceLimits,
+		AutoscalingProfile:               config["autoscaling_profile"].(string),
 		AutoprovisioningNodePoolDefaults: expandAutoProvisioningDefaults(config["auto_provisioning_defaults"], d),
 	}
 }
@@ -4485,6 +4534,13 @@ func isEnablePrivateEndpointPSCCluster(cluster *container.Cluster) bool {
 		return true
 	}
 	return false
+}
+
+func isEnablePDCSI(cluster *container.Cluster) bool {
+	if cluster.AddonsConfig == nil || cluster.AddonsConfig.GcePersistentDiskCsiDriverConfig == nil {
+		return true // PDCSI is enabled by default.
+	}
+	return cluster.AddonsConfig.GcePersistentDiskCsiDriverConfig.Enabled
 }
 
 func expandPrivateClusterConfig(configured interface{}) *container.PrivateClusterConfig {
@@ -5272,6 +5328,7 @@ func flattenClusterAutoscaling(a *container.ClusterAutoscaling) []map[string]int
 	} else {
 		r["enabled"] = false
 	}
+	r["autoscaling_profile"] = a.AutoscalingProfile
 
 	return []map[string]interface{}{r}
 }

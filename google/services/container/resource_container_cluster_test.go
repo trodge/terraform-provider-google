@@ -128,7 +128,6 @@ func TestAccContainerCluster_misc(t *testing.T) {
 }
 
 func TestAccContainerCluster_withAddons(t *testing.T) {
-	t.Skipf("Skipping test %s due to https://github.com/hashicorp/terraform-provider-google/issues/16114", t.Name())
 	t.Parallel()
 
 	clusterName := fmt.Sprintf("tf-test-cluster-%s", acctest.RandString(t, 10))
@@ -2864,6 +2863,62 @@ func TestAccContainerCluster_withSoleTenantGroup(t *testing.T) {
 	})
 }
 
+func TestAccContainerCluster_withAutoscalingProfile(t *testing.T) {
+	t.Parallel()
+	clusterName := fmt.Sprintf("cluster-test-%s", acctest.RandString(t, 10))
+	networkName := acctest.BootstrapSharedTestNetwork(t, "gke-cluster")
+	subnetworkName := acctest.BootstrapSubnet(t, "gke-cluster", networkName)
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckContainerClusterDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccContainerCluster_withAutoscalingProfile(clusterName, "BALANCED", networkName, subnetworkName),
+			},
+			{
+				ResourceName:            "google_container_cluster.autoscaling_with_profile",
+				ImportStateIdPrefix:     "us-central1-a/",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"deletion_protection"},
+			},
+			{
+				Config: testAccContainerCluster_withAutoscalingProfile(clusterName, "OPTIMIZE_UTILIZATION", networkName, subnetworkName),
+			},
+			{
+				ResourceName:            "google_container_cluster.autoscaling_with_profile",
+				ImportStateIdPrefix:     "us-central1-a/",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"deletion_protection"},
+			},
+		},
+	})
+}
+
+func TestAccContainerCluster_withInvalidAutoscalingProfile(t *testing.T) {
+	// This is essentially a unit test, no interactions
+	acctest.SkipIfVcr(t)
+	t.Parallel()
+	clusterName := fmt.Sprintf("cluster-test-%s", acctest.RandString(t, 10))
+	networkName := acctest.BootstrapSharedTestNetwork(t, "gke-cluster")
+	subnetworkName := acctest.BootstrapSubnet(t, "gke-cluster", networkName)
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckContainerClusterDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccContainerCluster_withAutoscalingProfile(clusterName, "AS_CHEAP_AS_POSSIBLE", networkName, subnetworkName),
+				ExpectError: regexp.MustCompile(`expected cluster_autoscaling\.0\.autoscaling_profile to be one of \[BALANCED OPTIMIZE_UTILIZATION\], got AS_CHEAP_AS_POSSIBLE`),
+			},
+		},
+	})
+}
+
 func TestAccContainerCluster_nodeAutoprovisioningDefaultsDiskSizeGb(t *testing.T) {
 	t.Parallel()
 
@@ -3066,15 +3121,35 @@ func TestAccContainerCluster_autoprovisioningDefaultsManagement(t *testing.T) {
 // taints it, having Terraform clean it up during the next apply. This test
 // name is now inexact, but is being preserved to maintain the test history.
 func TestAccContainerCluster_errorCleanDanglingCluster(t *testing.T) {
+	acctest.SkipIfVcr(t) // skipped because the timeout step doesn't record operation GET interactions
 	t.Parallel()
 
-	prefix := acctest.RandString(t, 10)
-	clusterName := fmt.Sprintf("tf-test-cluster-%s", prefix)
-	clusterNameError := fmt.Sprintf("tf-test-cluster-err-%s", prefix)
+	suffix := acctest.RandString(t, 10)
+	clusterName := fmt.Sprintf("tf-test-cluster-%s", suffix)
+	clusterNameError := fmt.Sprintf("tf-test-cluster-err-%s", suffix)
+	clusterNameErrorWithTimeout := fmt.Sprintf("tf-test-cluster-timeout-%s", suffix)
 	containerNetName := fmt.Sprintf("tf-test-container-net-%s", acctest.RandString(t, 10))
 
 	initConfig := testAccContainerCluster_withInitialCIDR(containerNetName, clusterName)
 	overlapConfig := testAccContainerCluster_withCIDROverlap(initConfig, clusterNameError)
+	overlapConfigWithTimeout := testAccContainerCluster_withCIDROverlapWithTimeout(initConfig, clusterNameErrorWithTimeout, "40s")
+
+	checkTaintApplied := func(st *terraform.State) error {
+		// Return an error if there is no tainted (i.e. marked for deletion) cluster.
+		ms := st.RootModule()
+		errCluster, ok := ms.Resources["google_container_cluster.cidr_error_overlap"]
+		if !ok {
+			var resourceNames []string
+			for rn := range ms.Resources {
+				resourceNames = append(resourceNames, rn)
+			}
+			return fmt.Errorf("could not find google_container_cluster.cidr_error_overlap in resources: %v", resourceNames)
+		}
+		if !errCluster.Primary.Tainted {
+			return fmt.Errorf("cluster with ID %s should be tainted, but is not", errCluster.Primary.ID)
+		}
+		return nil
+	}
 
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
@@ -3091,14 +3166,28 @@ func TestAccContainerCluster_errorCleanDanglingCluster(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"deletion_protection"},
 			},
 			{
+				// First attempt to create the overlapping cluster with no timeout, this should fail and taint the resource.
 				Config:      overlapConfig,
 				ExpectError: regexp.MustCompile("Error waiting for creating GKE cluster"),
 			},
-			// If tainted cluster won't be deleted, this step will return an error
 			{
+				// Check that the tainted resource is in the config.
 				Config:             overlapConfig,
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
+				Check:              checkTaintApplied,
+			},
+			{
+				// Next attempt to create the overlapping cluster with a 40s timeout. This will fail with a different error.
+				Config:      overlapConfigWithTimeout,
+				ExpectError: regexp.MustCompile("timeout while waiting for state to become 'DONE'"),
+			},
+			{
+				// Check that the tainted resource is in the config.
+				Config:             overlapConfig,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+				Check:              checkTaintApplied,
 			},
 		},
 	})
@@ -3114,7 +3203,7 @@ func TestAccContainerCluster_errorNoClusterCreated(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccContainerCluster_withInvalidLocation("wonderland"),
-				ExpectError: regexp.MustCompile(`Location "wonderland" does not exist.`),
+				ExpectError: regexp.MustCompile(`(Location "wonderland" does not exist)|(Permission denied on 'locations\/wonderland' \(or it may not exist\))`),
 			},
 		},
 	})
@@ -3486,10 +3575,19 @@ func TestAccContainerCluster_withDNSConfig(t *testing.T) {
 		CheckDestroy:             testAccCheckContainerClusterDestroyProducer(t),
 		Steps: []resource.TestStep{
 			{
+				Config: testAccContainerCluster_basic(clusterName, networkName, subnetworkName),
+			},
+			{
+				ResourceName:            "google_container_cluster.primary",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"deletion_protection"},
+			},
+			{
 				Config: testAccContainerCluster_withDNSConfig(clusterName, "CLOUD_DNS", domainName, "VPC_SCOPE", networkName, subnetworkName),
 			},
 			{
-				ResourceName:            "google_container_cluster.with_dns_config",
+				ResourceName:            "google_container_cluster.primary",
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"deletion_protection"},
@@ -4085,6 +4183,7 @@ resource "google_container_cluster" "primary" {
     gcs_fuse_csi_driver_config {
       enabled = true
     }
+	}
   deletion_protection = false
   network    = "%s"
   subnetwork    = "%s"
@@ -4763,7 +4862,6 @@ func TestAccContainerCluster_withEnablePrivateEndpointToggle(t *testing.T) {
 }
 
 func testAccContainerCluster_withEnablePrivateEndpoint(clusterName, flag, networkName, subnetworkName string) string {
-
 	return fmt.Sprintf(`
 data "google_container_engine_versions" "uscentral1a" {
   location = "us-central1-a"
@@ -5550,6 +5648,25 @@ resource "google_container_cluster" "with_node_pool" {
   subnetwork    = "%s"
 }
 `, cluster, nodePool, networkName, subnetworkName)
+}
+
+func testAccContainerCluster_withAutoscalingProfile(cluster, autoscalingProfile, networkName, subnetworkName string) string {
+	config := fmt.Sprintf(`
+resource "google_container_cluster" "autoscaling_with_profile" {
+  name               = "%s"
+  location           = "us-central1-a"
+  initial_node_count = 1
+
+  cluster_autoscaling {
+    enabled             = false
+    autoscaling_profile = "%s"
+  }
+  deletion_protection = false
+  network    = "%s"
+  subnetwork    = "%s"
+}
+`, cluster, autoscalingProfile, networkName, subnetworkName)
+	return config
 }
 
 func testAccContainerCluster_autoprovisioning(cluster, networkName, subnetworkName string, autoprovisioning, withNetworkTag bool) string {
@@ -6892,7 +7009,7 @@ resource "google_container_cluster" "cidr_error_preempt" {
 
 func testAccContainerCluster_withCIDROverlap(initConfig, secondCluster string) string {
 	return fmt.Sprintf(`
-  %s
+%s
 
 resource "google_container_cluster" "cidr_error_overlap" {
   name     = "%s"
@@ -6911,6 +7028,32 @@ resource "google_container_cluster" "cidr_error_overlap" {
   deletion_protection = false
 }
 `, initConfig, secondCluster)
+}
+
+func testAccContainerCluster_withCIDROverlapWithTimeout(initConfig, secondCluster, createTimeout string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "google_container_cluster" "cidr_error_overlap" {
+  name     = "%s"
+  location = "us-central1-a"
+
+  network    = google_compute_network.container_network.name
+  subnetwork = google_compute_subnetwork.container_subnetwork.name
+
+  initial_node_count = 1
+
+  networking_mode = "VPC_NATIVE"
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block  = "10.0.0.0/16"
+    services_ipv4_cidr_block = "10.1.0.0/16"
+  }
+  deletion_protection = false
+  timeouts {
+    create = "%s"
+  }
+}
+`, initConfig, secondCluster, createTimeout)
 }
 
 func testAccContainerCluster_withInvalidLocation(location string) string {
@@ -7314,9 +7457,9 @@ resource "google_container_cluster" "with_autopilot" {
 
 func testAccContainerCluster_withDNSConfig(clusterName, clusterDns, clusterDnsDomain, clusterDnsScope, networkName, subnetworkName string) string {
 	return fmt.Sprintf(`
-resource "google_container_cluster" "with_dns_config" {
-  name               = "%s"
-  location           = "us-central1-f"
+resource "google_container_cluster" "primary" {
+	name               = "%s"
+	location           = "us-central1-a"
   initial_node_count = 1
   dns_config {
     cluster_dns 	   = "%s"
