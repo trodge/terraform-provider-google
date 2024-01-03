@@ -637,7 +637,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 										Optional:     true,
 										AtLeastOneOf: workloadsConfigKeys,
 										ForceNew:     false,
-										Computed:     true,
 										Description:  `Configuration for resources used by Airflow schedulers.`,
 										MaxItems:     1,
 										Elem: &schema.Resource{
@@ -646,7 +645,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `CPU request and limit for a single Airflow scheduler replica`,
 												},
@@ -654,7 +652,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Memory (GB) request and limit for a single Airflow scheduler replica.`,
 												},
@@ -662,7 +659,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Storage (GB) request and limit for a single Airflow scheduler replica.`,
 												},
@@ -670,7 +666,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeInt,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.IntAtLeast(0),
 													Description:  `The number of schedulers.`,
 												},
@@ -681,7 +676,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 										Type:         schema.TypeList,
 										Optional:     true,
 										AtLeastOneOf: workloadsConfigKeys,
-										Computed:     true,
 										Description:  `Configuration for resources used by Airflow triggerers.`,
 										MaxItems:     1,
 										Elem: &schema.Resource{
@@ -712,7 +706,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 										Optional:     true,
 										AtLeastOneOf: workloadsConfigKeys,
 										ForceNew:     false,
-										Computed:     true,
 										Description:  `Configuration for resources used by Airflow web server.`,
 										MaxItems:     1,
 										Elem: &schema.Resource{
@@ -721,7 +714,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `CPU request and limit for Airflow web server.`,
 												},
@@ -729,7 +721,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Memory (GB) request and limit for Airflow web server.`,
 												},
@@ -737,7 +728,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Storage (GB) request and limit for Airflow web server.`,
 												},
@@ -749,7 +739,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 										Optional:     true,
 										AtLeastOneOf: workloadsConfigKeys,
 										ForceNew:     false,
-										Computed:     true,
 										Description:  `Configuration for resources used by Airflow workers.`,
 										MaxItems:     1,
 										Elem: &schema.Resource{
@@ -758,7 +747,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `CPU request and limit for a single Airflow worker replica.`,
 												},
@@ -766,7 +754,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Memory (GB) request and limit for a single Airflow worker replica.`,
 												},
@@ -774,7 +761,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeFloat,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.FloatAtLeast(0),
 													Description:  `Storage (GB) request and limit for a single Airflow worker replica.`,
 												},
@@ -782,7 +768,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeInt,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.IntAtLeast(0),
 													Description:  `Minimum number of workers for autoscaling.`,
 												},
@@ -790,7 +775,6 @@ func ResourceComposerEnvironment() *schema.Resource {
 													Type:         schema.TypeInt,
 													Optional:     true,
 													ForceNew:     false,
-													Computed:     true,
 													ValidateFunc: validation.IntAtLeast(0),
 													Description:  `Maximum number of workers for autoscaling.`,
 												},
@@ -1530,10 +1514,8 @@ func flattenComposerEnvironmentConfigPrivateEnvironmentConfig(envCfg *composer.P
 	if envCfg.NetworkingConfig != nil {
 		transformed["connection_type"] = envCfg.NetworkingConfig.ConnectionType
 	}
-	if envCfg.PrivateClusterConfig != nil {
-		transformed["enable_private_endpoint"] = envCfg.PrivateClusterConfig.EnablePrivateEndpoint
-		transformed["master_ipv4_cidr_block"] = envCfg.PrivateClusterConfig.MasterIpv4CidrBlock
-	}
+	transformed["enable_private_endpoint"] = envCfg.PrivateClusterConfig.EnablePrivateEndpoint
+	transformed["master_ipv4_cidr_block"] = envCfg.PrivateClusterConfig.MasterIpv4CidrBlock
 	transformed["cloud_sql_ipv4_cidr_block"] = envCfg.CloudSqlIpv4CidrBlock
 	transformed["web_server_ipv4_cidr_block"] = envCfg.WebServerIpv4CidrBlock
 	transformed["cloud_composer_network_ipv4_cidr_block"] = envCfg.CloudComposerNetworkIpv4CidrBlock
