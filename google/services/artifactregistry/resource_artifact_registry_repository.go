@@ -32,6 +32,40 @@ import (
 	"github.com/hashicorp/terraform-provider-google/google/verify"
 )
 
+func upstreamPoliciesDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
+	o, n := d.GetChange("virtual_repository_config.0.upstream_policies")
+	oldPolicies, ok := o.([]any)
+	if !ok {
+		return false
+	}
+	newPolicies, ok := n.([]any)
+	if !ok {
+		return false
+	}
+
+	var oldHashes, newHashes []interface{}
+	for _, policy := range oldPolicies {
+		data, ok := policy.(map[string]any)
+		if !ok {
+			return false
+		}
+		hashStr := fmt.Sprintf("[id:%v priority:%v repository:%v]", data["id"], data["priority"], data["repository"])
+		oldHashes = append(oldHashes, hashStr)
+	}
+	for _, policy := range newPolicies {
+		data, ok := policy.(map[string]any)
+		if !ok {
+			return false
+		}
+		hashStr := fmt.Sprintf("[id:%v priority:%v repository:%v]", data["id"], data["priority"], data["repository"])
+		newHashes = append(newHashes, hashStr)
+	}
+
+	oldSet := schema.NewSet(schema.HashString, oldHashes)
+	newSet := schema.NewSet(schema.HashString, newHashes)
+	return oldSet.Equal(newSet)
+}
+
 func ResourceArtifactRegistryRepository() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceArtifactRegistryRepositoryCreate,
@@ -291,6 +325,42 @@ snapshot versions.`,
 							},
 							ExactlyOneOf: []string{"remote_repository_config.0.apt_repository", "remote_repository_config.0.docker_repository", "remote_repository_config.0.maven_repository", "remote_repository_config.0.npm_repository", "remote_repository_config.0.python_repository", "remote_repository_config.0.yum_repository"},
 						},
+						"upstream_credentials": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							ForceNew:    true,
+							Description: `The credentials used to access the remote repository.`,
+							MaxItems:    1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"username_password_credentials": {
+										Type:        schema.TypeList,
+										Optional:    true,
+										ForceNew:    true,
+										Description: `Use username and password to access the remote repository.`,
+										MaxItems:    1,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"password_secret_version": {
+													Type:     schema.TypeString,
+													Optional: true,
+													ForceNew: true,
+													Description: `The Secret Manager key version that holds the password to access the
+remote repository. Must be in the format of
+'projects/{project}/secrets/{secret}/versions/{version}'.`,
+												},
+												"username": {
+													Type:        schema.TypeString,
+													Optional:    true,
+													ForceNew:    true,
+													Description: `The username to access the remote repository.`,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
 						"yum_repository": {
 							Type:        schema.TypeList,
 							Optional:    true,
@@ -339,8 +409,9 @@ snapshot versions.`,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"upstream_policies": {
-							Type:     schema.TypeList,
-							Optional: true,
+							Type:             schema.TypeList,
+							Optional:         true,
+							DiffSuppressFunc: upstreamPoliciesDiffSuppress,
 							Description: `Policies that configure the upstream artifacts distributed by the Virtual
 Repository. Upstream policies cannot be set on a standard repository.`,
 							Elem: &schema.Resource{
@@ -986,6 +1057,8 @@ func flattenArtifactRegistryRepositoryRemoteRepositoryConfig(v interface{}, d *s
 		flattenArtifactRegistryRepositoryRemoteRepositoryConfigPythonRepository(original["pythonRepository"], d, config)
 	transformed["yum_repository"] =
 		flattenArtifactRegistryRepositoryRemoteRepositoryConfigYumRepository(original["yumRepository"], d, config)
+	transformed["upstream_credentials"] =
+		flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentials(original["upstreamCredentials"], d, config)
 	return []interface{}{transformed}
 }
 func flattenArtifactRegistryRepositoryRemoteRepositoryConfigDescription(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
@@ -1129,6 +1202,42 @@ func flattenArtifactRegistryRepositoryRemoteRepositoryConfigYumRepositoryPublicR
 }
 
 func flattenArtifactRegistryRepositoryRemoteRepositoryConfigYumRepositoryPublicRepositoryRepositoryPath(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
+	return v
+}
+
+func flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentials(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
+	if v == nil {
+		return nil
+	}
+	original := v.(map[string]interface{})
+	if len(original) == 0 {
+		return nil
+	}
+	transformed := make(map[string]interface{})
+	transformed["username_password_credentials"] =
+		flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentials(original["usernamePasswordCredentials"], d, config)
+	return []interface{}{transformed}
+}
+func flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentials(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
+	if v == nil {
+		return nil
+	}
+	original := v.(map[string]interface{})
+	if len(original) == 0 {
+		return nil
+	}
+	transformed := make(map[string]interface{})
+	transformed["username"] =
+		flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsUsername(original["username"], d, config)
+	transformed["password_secret_version"] =
+		flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsPasswordSecretVersion(original["passwordSecretVersion"], d, config)
+	return []interface{}{transformed}
+}
+func flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsUsername(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
+	return v
+}
+
+func flattenArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsPasswordSecretVersion(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
 	return v
 }
 
@@ -1354,6 +1463,13 @@ func expandArtifactRegistryRepositoryRemoteRepositoryConfig(v interface{}, d tpg
 		transformed["yumRepository"] = transformedYumRepository
 	}
 
+	transformedUpstreamCredentials, err := expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentials(original["upstream_credentials"], d, config)
+	if err != nil {
+		return nil, err
+	} else if val := reflect.ValueOf(transformedUpstreamCredentials); val.IsValid() && !tpgresource.IsEmptyValue(val) {
+		transformed["upstreamCredentials"] = transformedUpstreamCredentials
+	}
+
 	return transformed, nil
 }
 
@@ -1556,6 +1672,59 @@ func expandArtifactRegistryRepositoryRemoteRepositoryConfigYumRepositoryPublicRe
 }
 
 func expandArtifactRegistryRepositoryRemoteRepositoryConfigYumRepositoryPublicRepositoryRepositoryPath(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
+	return v, nil
+}
+
+func expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentials(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
+	l := v.([]interface{})
+	if len(l) == 0 || l[0] == nil {
+		return nil, nil
+	}
+	raw := l[0]
+	original := raw.(map[string]interface{})
+	transformed := make(map[string]interface{})
+
+	transformedUsernamePasswordCredentials, err := expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentials(original["username_password_credentials"], d, config)
+	if err != nil {
+		return nil, err
+	} else if val := reflect.ValueOf(transformedUsernamePasswordCredentials); val.IsValid() && !tpgresource.IsEmptyValue(val) {
+		transformed["usernamePasswordCredentials"] = transformedUsernamePasswordCredentials
+	}
+
+	return transformed, nil
+}
+
+func expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentials(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
+	l := v.([]interface{})
+	if len(l) == 0 || l[0] == nil {
+		return nil, nil
+	}
+	raw := l[0]
+	original := raw.(map[string]interface{})
+	transformed := make(map[string]interface{})
+
+	transformedUsername, err := expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsUsername(original["username"], d, config)
+	if err != nil {
+		return nil, err
+	} else if val := reflect.ValueOf(transformedUsername); val.IsValid() && !tpgresource.IsEmptyValue(val) {
+		transformed["username"] = transformedUsername
+	}
+
+	transformedPasswordSecretVersion, err := expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsPasswordSecretVersion(original["password_secret_version"], d, config)
+	if err != nil {
+		return nil, err
+	} else if val := reflect.ValueOf(transformedPasswordSecretVersion); val.IsValid() && !tpgresource.IsEmptyValue(val) {
+		transformed["passwordSecretVersion"] = transformedPasswordSecretVersion
+	}
+
+	return transformed, nil
+}
+
+func expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsUsername(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
+	return v, nil
+}
+
+func expandArtifactRegistryRepositoryRemoteRepositoryConfigUpstreamCredentialsUsernamePasswordCredentialsPasswordSecretVersion(v interface{}, d tpgresource.TerraformResourceData, config *transport_tpg.Config) (interface{}, error) {
 	return v, nil
 }
 

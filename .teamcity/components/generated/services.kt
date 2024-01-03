@@ -456,6 +456,11 @@ var services = mapOf(
         "displayName" to "Monitoring",
         "path" to "./google/services/monitoring"
     ),
+    "netapp" to mapOf(
+        "name" to "netapp",
+        "displayName" to "Netapp",
+        "path" to "./google/services/netapp"
+    ),
     "networkconnectivity" to mapOf(
         "name" to "networkconnectivity",
         "displayName" to "Networkconnectivity",
@@ -540,6 +545,11 @@ var services = mapOf(
         "name" to "secretmanager",
         "displayName" to "Secretmanager",
         "path" to "./google/services/secretmanager"
+    ),
+    "securesourcemanager" to mapOf(
+        "name" to "securesourcemanager",
+        "displayName" to "Securesourcemanager",
+        "path" to "./google/services/securesourcemanager"
     ),
     "securitycenter" to mapOf(
         "name" to "securitycenter",
@@ -630,6 +640,11 @@ var services = mapOf(
         "name" to "vpcaccess",
         "displayName" to "Vpcaccess",
         "path" to "./google/services/vpcaccess"
+    ),
+    "workbench" to mapOf(
+        "name" to "workbench",
+        "displayName" to "Workbench",
+        "path" to "./google/services/workbench"
     ),
     "workflows" to mapOf(
         "name" to "workflows",
